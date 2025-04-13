@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>心有千千结｜积分榜</title>
+  <title>心有千千结｜心能量</title>
   <style>
     @font-face {
       font-family: "Kaiti";
@@ -121,20 +121,49 @@
       background: rgba(255, 255, 0, 0.3);
       transition: background 1s ease-out;
     }
+    .history {
+      margin-top: 40px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .history h2 {
+      text-align: center;
+      font-size: 24px;
+      color: #a64ca6;
+    }
+    .history ul {
+      list-style: none;
+      padding: 0;
+    }
+    .history ul li {
+      margin: 8px 0;
+      font-size: 16px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
-  <h1>🧵 心有千千结 · 积分榜</h1>
+  <h1>🧵 心有千千结 · 心能量</h1>
   <div class="board" id="board"></div>
   <div class="controls" id="controls"></div>
   <button id="reset">🔄 重置所有分数</button>
+
+  <div class="history" id="history">
+    <h2>历史记录</h2>
+    <ul id="history-list"></ul>
+  </div>
+
   <audio id="ding" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_6e5b40c763.mp3?filename=interface-option-select-25791.mp3"></audio>
 
   <script>
     const groups = ["布施组", "持戒组", "忍辱组", "精进组", "禅定组", "般若组"];
     const scores = JSON.parse(localStorage.getItem('xinEnergyScores') || '{}');
+    const history = JSON.parse(localStorage.getItem('historyRecords') || '[]');
     const board = document.getElementById("board");
     const controls = document.getElementById("controls");
+    const historyList = document.getElementById("history-list");
     const ding = document.getElementById("ding");
 
     groups.forEach(group => {
@@ -152,7 +181,7 @@
       const ctrl = document.createElement("div");
       ctrl.className = "control";
       ctrl.innerHTML = `
-        <strong style="font-family: Kaiti, serif; font-size: 20px;">${group}</strong><br>
+        <strong>${group}</strong><br>
         <input type="number" id="input-${group}" placeholder="+/-">
         <br><button onclick="changeScore('${group}')">加分</button>
       `;
@@ -160,6 +189,7 @@
     });
 
     updateAllBars();
+    loadHistory();
 
     function changeScore(group) {
       const input = document.getElementById(`input-${group}`);
@@ -172,6 +202,13 @@
         document.getElementById(`score-${group}`).innerText = `${scores[group]}`;
         updateAllBars();
         localStorage.setItem('xinEnergyScores', JSON.stringify(scores));
+
+        // Save history
+        const record = `${new Date().toLocaleString()} - ${group}: ${delta > 0 ? '+' : ''}${delta}`;
+        history.push(record);
+        localStorage.setItem('historyRecords', JSON.stringify(history));
+        loadHistory();
+
         highlightMaxGroup();
         input.value = "";
       }
@@ -195,6 +232,15 @@
         document.body.appendChild(particle);
         setTimeout(() => particle.remove(), 1000);
       }
+    }
+
+    function loadHistory() {
+      historyList.innerHTML = "";
+      history.slice(-10).forEach(record => {
+        const li = document.createElement('li');
+        li.textContent = record;
+        historyList.appendChild(li);
+      });
     }
 
     function highlightMaxGroup() {
@@ -232,6 +278,7 @@
   </script>
 </body>
 </html>
+
 
 
 
