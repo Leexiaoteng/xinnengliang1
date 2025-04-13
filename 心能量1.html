@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>心有千千结｜积分榜</title>
+  <style>
+    @font-face {
+      font-family: "Kaiti";
+      src: local("KaiTi"), local("Kaiti");
+    }
+    body {
+      font-family: "Kaiti", serif;
+      background-color: #fef6fb;
+      color: #333;
+      padding: 20px;
+      max-width: 1000px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #a64ca6;
+      margin-bottom: 40px;
+      font-size: 36px;
+    }
+    .board {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-end;
+      height: 400px;
+      border-bottom: 2px solid #aaa;
+      padding-bottom: 20px;
+      position: relative;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+      position: relative;
+    }
+    .bar {
+      width: 50px;
+      background: linear-gradient(to top, #f9b5dd, #d978b2);
+      transition: height 0.5s;
+      border-radius: 10px 10px 0 0;
+      position: relative;
+    }
+    .score {
+      margin-bottom: 10px;
+      font-size: 28px;
+      font-weight: bold;
+      color: #a64ca6;
+    }
+    .group-name {
+      margin-top: 10px;
+      font-weight: bold;
+      text-align: center;
+      color: #a64ca6;
+      font-size: 22px;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    .control {
+      background: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      width: 150px;
+    }
+    .control input[type="number"] {
+      width: 60px;
+      padding: 5px;
+    }
+    .control button {
+      margin-top: 5px;
+      padding: 6px 12px;
+      background: #d978b2;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .control button:hover {
+      background: #c2629e;
+    }
+    #reset {
+      display: block;
+      margin: 40px auto;
+      background: #c94f4f;
+    }
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: gold;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: explode 1s ease-out forwards;
+    }
+    @keyframes explode {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(3) translateY(-50px); }
+    }
+    .highlight {
+      background: rgba(255, 255, 0, 0.3);
+      transition: background 1s ease-out;
+    }
+    .log {
+      font-size: 14px;
+      margin-top: 10px;
+      color: #555;
+      max-height: 80px;
+      overflow-y: auto;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧵 心有千千结 · 积分榜</h1>
+  <div class="board" id="board"></div>
+  <div class="controls" id="controls"></div>
+  <button id="reset">🔄 重置所有分数</button>
+  <audio id="ding" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_6e5b40c763.mp3?filename=interface-option-select-25791.mp3"></audio>
+
+  <script>
+    const groups = ["布施组", "持戒组", "忍辱组", "精进组", "禅定组", "般若组"];
+    const scores = JSON.parse(localStorage.getItem('xinEnergyScores') || '{}');
+    const logs = JSON.parse(localStorage.getItem('xinEnergyLogs') || '{}');
+    const board = document.getElementById("board");
+    const controls = document.getElementById("controls");
+    const ding = document.getElementById("ding");
+
+    groups.forEach(group => {
+      if (!(group in scores)) scores[group] = 0;
+      if (!(group in logs)) logs[group] = [];
+
+      const col = document.createElement("div");
+      col.className = "column";
+      col.innerHTML = `
+        <div class="score" id="score-${group}">${scores[group]}</div>
+        <div class="bar" id="bar-${group}" style="height: 0px;"></div>
+        <div class="group-name">${group}</div>
+      `;
+      board.appendChild(col);
+
+      const ctrl = document.createElement("div");
+      ctrl.className = "control";
+      ctrl.innerHTML = `
+        <strong>${group}</strong><br>
+        <input type="number" id="input-${group}" placeholder="+/-">
+        <br><button onclick="changeScore('${group}')">加分</button>
+        <div class="log" id="log-${group}"></div>
+      `;
+      controls.appendChild(ctrl);
+    });
+
+    updateAllBars();
+    highlightMaxGroup();
+    updateLogsDisplay();
+
+    function changeScore(group) {
+      const input = document.getElementById(`input-${group}`);
+      const delta = parseInt(input.value);
+      if (!isNaN(delta)) {
+        scores[group] += delta;
+        logs[group].unshift({ delta, time: new Date().toLocaleTimeString() });
+        logs[group] = logs[group].slice(0, 3); // 只保留最新3条
+        ding.currentTime = 0;
+        ding.play();
+        triggerParticles(document.getElementById(`bar-${group}`));
+        document.getElementById(`score-${group}`).innerText = `${scores[group]}`;
+        updateAllBars();
+        highlightMaxGroup();
+        updateLogsDisplay();
+        localStorage.setItem('xinEnergyScores', JSON.stringify(scores));
+        localStorage.setItem('xinEnergyLogs', JSON.stringify(logs));
+        input.value = "";
+      }
+    }
+
+    function updateAllBars() {
+      const max = Math.max(...Object.values(scores), 1);
+      groups.forEach(group => {
+        const height = (scores[group] / max) * 300;
+        document.getElementById(`bar-${group}`).style.height = `${height}px`;
+      });
+    }
+
+    function triggerParticles(target) {
+      for (let i = 0; i < 10; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        const rect = target.getBoundingClientRect();
+        particle.style.left = `${rect.left + rect.width / 2}px`;
+        particle.style.top = `${rect.top}px`;
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 1000);
+      }
+    }
+
+    function highlightMaxGroup() {
+      const max = Math.max(...Object.values(scores));
+      groups.forEach(group => {
+        const scoreElem = document.getElementById(`score-${group}`);
+        if (scores[group] === max && max > 0) {
+          scoreElem.classList.add("highlight");
+        } else {
+          scoreElem.classList.remove("highlight");
+        }
+      });
+    }
+
+    function updateLogsDisplay() {
+      groups.forEach(group => {
+        const logElem = document.getElementById(`log-${group}`);
+        const logList = logs[group].map(log =>
+          `${log.delta > 0 ? "＋" : ""}${log.delta} 分｜${log.time}`
+        ).join("<br>");
+        logElem.innerHTML = logList;
+      });
+    }
+
+    document.getElementById("reset").addEventListener("click", () => {
+      if (confirm("确定要重置所有分数吗？")) {
+        groups.forEach(group => {
+          scores[group] = 0;
+          logs[group] = [];
+        });
+        localStorage.setItem('xinEnergyScores', JSON.stringify(scores));
+        localStorage.setItem('xinEnergyLogs', JSON.stringify(logs));
+        location.reload();
+      }
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        groups.forEach(group => {
+          const input = document.getElementById(`input-${group}`);
+          if (document.activeElement === input) {
+            changeScore(group);
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
